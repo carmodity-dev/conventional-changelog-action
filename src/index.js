@@ -25,10 +25,9 @@ async function handleVersioningByExtension(ext, file, versionPath, releaseType) 
 
 async function run() {
   try {
-    let gitCommitMessage = core.getInput('git-message')
+    const gitCommitMessage = core.getInput('git-message')
     const gitUserName = core.getInput('git-user-name')
     const gitUserEmail = core.getInput('git-user-email')
-    const gitPush = core.getBooleanInput('git-push')
     const tagPrefix = core.getInput('tag-prefix')
     const preset = !core.getInput('config-file-path') ? core.getInput('preset') : ''
     const preCommitFile = core.getInput('pre-commit')
@@ -36,19 +35,11 @@ async function run() {
     const releaseCount = core.getInput('release-count')
     const versionFile = core.getInput('version-file')
     const versionPath = core.getInput('version-path')
-    const skipGitPull = core.getBooleanInput('skip-git-pull')
-    const skipVersionFile = core.getBooleanInput('skip-version-file')
-    const skipCommit = core.getBooleanInput('skip-commit')
-    const skipEmptyRelease = core.getBooleanInput('skip-on-empty')
+    const skipVersionFile = core.getInput('skip-version-file').toLowerCase() === 'true'
+    const skipCommit = core.getInput('skip-commit').toLowerCase() === 'true'
+    const skipEmptyRelease = core.getInput('skip-on-empty').toLowerCase() === 'true'
     const conventionalConfigFile = core.getInput('config-file-path')
     const preChangelogGenerationFile = core.getInput('pre-changelog-generation')
-    const gitUrl = core.getInput('git-url')
-    const skipCi = core.getBooleanInput('skip-ci')
-    const createSummary = core.getBooleanInput('create-summary')
-
-    if (skipCi) {
-      gitCommitMessage += ' [skip ci]'
-    }
 
     core.info(`Using "${preset}" preset`)
     core.info(`Using "${gitCommitMessage}" as commit message`)
@@ -60,7 +51,6 @@ async function run() {
     core.info(`Using "${tagPrefix}" as tag prefix`)
     core.info(`Using "${outputFile}" as output file`)
     core.info(`Using "${conventionalConfigFile}" as config file`)
-    core.info(`Using "${gitUrl}" as gitUrl`)
 
     if (preCommitFile) {
       core.info(`Using "${preCommitFile}" as pre-commit script`)
@@ -73,14 +63,12 @@ async function run() {
     core.info(`Skipping empty releases is "${skipEmptyRelease ? 'enabled' : 'disabled'}"`)
     core.info(`Skipping the update of the version file is "${skipVersionFile ? 'enabled' : 'disabled'}"`)
 
-    if (!skipGitPull) {
-      core.info('Pull to make sure we have the full git history')
-      await git.pull()
-    }
+    core.info('Pull to make sure we have the full git history')
+    await git.pull()
 
     const config = conventionalConfigFile && requireScript(conventionalConfigFile)
 
-    conventionalRecommendedBump({ preset, tagPrefix, config }, async (error, recommendation) => {
+    conventionalRecommendedBump({ preset, tagPrefix, config }, async(error, recommendation) => {
       if (error) {
         core.setFailed(error.message)
         return
@@ -184,22 +172,8 @@ async function run() {
       // Create the new tag
       await git.createTag(gitTag)
 
-      if (gitPush) {
-        try {
-          core.info('Push all changes')
-          await git.push()
-
-        } catch (error) {
-          console.error(error)
-
-          core.setFailed(error)
-
-          return
-        }
-
-      } else {
-        core.info('We not going to push the GIT changes')
-      }
+      core.info('Push all changes')
+      await git.push()
 
       // Set outputs so other actions (for example actions/create-release) can use it
       core.setOutput('changelog', stringChangelog)
@@ -207,17 +181,6 @@ async function run() {
       core.setOutput('version', newVersion)
       core.setOutput('tag', gitTag)
       core.setOutput('skipped', 'false')
-
-      if (createSummary) {
-        try {
-          await core.summary
-            .addHeading(gitTag, 2)
-            .addRaw(cleanChangelog)
-            .write()
-        } catch (err) {
-          core.warning(`Was unable to create summary! Error: "${err}"`,)
-        }
-      }
 
       try {
         // If we are running in test mode we use this to validate everything still runs

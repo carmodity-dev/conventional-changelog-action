@@ -1,7 +1,6 @@
 name: 'Conventional Changelog Action'
 description: 'Bump version, tag commit and generates changelog with conventional commits.'
 author: 'Tycho Bokdam'
-
 runs:
   using: 'node12'
   main: 'src/index.js'
@@ -13,8 +12,7 @@ branding:
 inputs:
   github-token:
     description: 'Github token'
-    default: ${{ github.token }}
-    required: false
+    required: true
 
   git-message:
     description: 'Commit message to use'
@@ -34,11 +32,6 @@ inputs:
   git-pull-method:
     description: 'The git pull method used when pulling all changes from remote'
     default: '--ff-only'
-    required: false
-
-  git-push:
-    description: 'Should all the git changes be push'
-    default: 'true'
     required: false
 
   preset:
@@ -71,11 +64,6 @@ inputs:
     default: 'version'
     required: false
 
-  skip-git-pull:
-    description: 'Do not pull the repo before tagging. Ensure you full cloned the repo in the first place to get tags'
-    default: 'false'
-    required: false
-  
   skip-on-empty:
     description: 'Do nothing when the changelog from the latest release is empty'
     default: 'true'
@@ -108,20 +96,6 @@ inputs:
     description: 'Path to the pre-changelog-generation script file'
     required: false
 
-  git-url:
-    description: 'Git Url'
-    default: 'github.com'
-    required: false
-
-  skip-ci:
-    description: 'Adds [skip ci] to commit message, to avoid triggering a new build'
-    default: 'true'
-    required: false
-
-  create-summary:
-    description: 'Adds the generated changelog as Action Summary'
-    default: 'false'
-    required: false
 
 outputs:
   changelog:

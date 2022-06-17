@@ -11,14 +11,13 @@ module.exports = new (class Git {
   commandsRun = []
 
   constructor() {
-    const githubToken = core.getInput('github-token')
+    const githubToken = core.getInput('github-token', { required: true })
 
     // Make the Github token secret
     core.setSecret(githubToken)
 
     const gitUserName = core.getInput('git-user-name')
     const gitUserEmail = core.getInput('git-user-email')
-    const gitUrl = core.getInput('git-url')
 
     // if the env is dont-use-git then we mock exec as we are testing a workflow
     if (ENV === 'dont-use-git') {
@@ -38,9 +37,7 @@ module.exports = new (class Git {
     this.config('user.email', gitUserEmail)
 
     // Update the origin
-    if (githubToken) {
-      this.updateOrigin(`https://x-access-token:${githubToken}@${gitUrl}/${GITHUB_REPOSITORY}.git`)
-    }
+    this.updateOrigin(`https://x-access-token:${githubToken}@github.com/${GITHUB_REPOSITORY}.git`)
   }
 
   /**
@@ -49,7 +46,7 @@ module.exports = new (class Git {
    * @param command
    * @return {Promise<>}
    */
-  exec = (command) => new Promise(async (resolve, reject) => {
+  exec = (command) => new Promise(async(resolve, reject) => {
     let execOutput = ''
 
     const options = {
@@ -103,7 +100,7 @@ module.exports = new (class Git {
    *
    * @return {Promise<>}
    */
-  pull = async () => {
+  pull = async() => {
     const args = ['pull']
 
     // Check if the repo is unshallow
@@ -131,7 +128,7 @@ module.exports = new (class Git {
    *
    * @return {Promise<>}
    */
-  isShallow = async () => {
+  isShallow = async() => {
     if (ENV === 'dont-use-git') {
       return false
     }
@@ -162,32 +159,21 @@ module.exports = new (class Git {
    */
   testHistory = () => {
     if (ENV === 'dont-use-git') {
-      const { EXPECTED_TAG, SKIPPED_COMMIT, EXPECTED_NO_PUSH, SKIPPED_PULL, SKIP_CI } = process.env
+      const { EXPECTED_TAG, SKIPPED_COMMIT } = process.env
 
       const expectedCommands = [
         'git config user.name "Conventional Changelog Action"',
         'git config user.email "conventional.changelog.action@github.com"',
+        'git pull --tags --ff-only',
       ]
-
-      if (!SKIPPED_PULL) {
-        expectedCommands.push('git pull --tags --ff-only')
-      }
 
       if (!SKIPPED_COMMIT) {
         expectedCommands.push('git add .')
-        if (SKIP_CI === 'false') {
-          expectedCommands.push(`git commit -m "chore(release): ${EXPECTED_TAG}"`)
-
-        } else {
-          expectedCommands.push(`git commit -m "chore(release): ${EXPECTED_TAG} [skip ci]"`)
-        }
+        expectedCommands.push(`git commit -m "chore(release): ${EXPECTED_TAG}"`)
       }
 
       expectedCommands.push(`git tag -a ${EXPECTED_TAG} -m "${EXPECTED_TAG}"`)
-
-      if (!EXPECTED_NO_PUSH) {
-        expectedCommands.push(`git push origin ${branch} --follow-tags`)
-      }
+      expectedCommands.push(`git push origin ${branch} --follow-tags`)
 
       assert.deepStrictEqual(
         this.commandsRun,
